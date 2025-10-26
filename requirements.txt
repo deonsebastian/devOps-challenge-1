@@ -1,0 +1,4 @@
+# Basic dependencies for Python apps
+Flask==3.0.3        # for small web apps
+pytest==8.3.3       # for testing
+requests==2.32.3    # for API calls or web requests
