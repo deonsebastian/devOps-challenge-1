@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = "deonsebastian/devops-challenge-1"
+        IMAGE_TAG  = "${env.BUILD_NUMBER ?: 'local'}"
+    }
+    stages {
+        stage('Checkout') { steps { checkout scm } }
+        stage('Build Docker Image') { steps { sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ." } }
+        stage('Test') {
+            steps {
+                sh '''
+                docker run --rm -v "$PWD":/app -w /app python:3.10-bullseye bash -lc "
+                  pip install --upgrade pip >/dev/null 2>&1 || true &&
+                  if [ -f requirements.txt ]; then pip install -r requirements.txt >/dev/null 2>&1 || true; fi &&
+                  pytest -q || exit 1
+                "
+                '''
+            }
+        }
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+                    sh '''
+                    echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:latest
+                    docker logout
+                    '''
+                }
+            }
+        }
+        stage('Deploy (local)') {
+            steps {
+                sh """
+                   if docker ps -a --format '{{.Names}}' | grep -q '^ci_app$'; then docker rm -f ci_app || true; fi
+                   docker run -d --name ci_app -p 5000:5000 ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+    }
+    post { always { archiveArtifacts artifacts: '**/test-reports/**/*.xml', allowEmptyArchive: true } }
+}
