@@ -3,7 +3,7 @@ pipeline {
 
   environment {
     // Change this to your DockerHub username
-    DOCKERHUB_USER = 'your-dockerhub-username'
+    DOCKERHUB_USER = 'deon'
     IMAGE_NAME = "${DOCKERHUB_USER}/devops-challenge-1"
     IMAGE_TAG  = "${env.BUILD_NUMBER ?: 'latest'}"
     FULL_IMAGE = "${IMAGE_NAME}:${IMAGE_TAG}"
